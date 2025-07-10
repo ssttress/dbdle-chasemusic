@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>DBD Chase Music Guessing Game</title>
   <style>
     body {
@@ -9,10 +10,22 @@
       text-align: center;
       padding: 30px;
       background-color: #121212;
+      background-image: url('background.png');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
       color: #f0f0f0;
+      position: relative;
+      min-height: 100vh;
+      box-sizing: border-box;
+      padding-bottom: 0;
+      margin: 0;
+      height: 100vh;
     }
 
-    input, button {
+    input,
+    button {
       padding: 10px;
       margin: 5px;
       font-size: 18px;
@@ -27,6 +40,11 @@
       max-width: 400px;
       margin-left: auto;
       margin-right: auto;
+      max-height: 270px;
+      overflow-y: auto;
+      padding-bottom: 20px;
+      padding-right: 10px;
+      box-sizing: border-box;
     }
 
     .guess-row {
@@ -50,9 +68,15 @@
       color: limegreen;
     }
 
+    #loseMessage {
+      font-size: 24px;
+      margin-top: 20px;
+      color: red;
+    }
+
     #newRoundButton {
       display: none;
-      margin-top: 20px;
+      margin-top: 10px;
     }
 
     .audio-btn {
@@ -81,6 +105,10 @@
       display: none;
     }
 
+    .dropdown .highlighted {
+      background-color: #555;
+    }
+
     .dropdown div {
       padding: 8px;
       cursor: pointer;
@@ -97,343 +125,171 @@
       margin-bottom: 20px;
       flex-wrap: wrap;
     }
+
+    #audioVolumeContainer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 0px;
+      margin-left: -30px;
+    }
+
+    #volumeSlider {
+      -webkit-appearance: slider-vertical;
+      writing-mode: bt-lr;
+      width: 30px;
+      height: 70px;
+      cursor: pointer;
+      background: transparent;
+      margin: 0;
+      padding: 0;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    #volumeSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 30px;
+      background: #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: -7px;
+    }
+
+    #volumeSlider::-moz-range-thumb {
+      height: 20px;
+      width: 30px;
+      background: #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #giveUpButton {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background-color: #802020;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      font-size: 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    #giveUpButton:hover {
+      background-color: #a03030;
+    }
+
+    #shared-note {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 90vw;
+      font-size: 14px;
+      color: #ccc;
+      margin: 0;
+      padding: 6px 12px;
+      background-color: rgba(30, 30, 30, 0.9);
+      border-radius: 6px;
+      z-index: 999;
+      user-select: none;
+    }
+
+    #gameLogo {
+      max-width: 500px;
+      height: auto;
+      margin-bottom: 0px;
+    }
   </style>
 </head>
+
 <body>
+
+  <img src="logo.png" alt="Game Logo" id="gameLogo" />
 
   <h1>Guess the Killer's Chase Music</h1>
 
-  <div id="audioButtons">
-    <button class="audio-btn" data-tier="0">32m ▶</button>
-    <button class="audio-btn" data-tier="1">16m 🔒</button>
-    <button class="audio-btn" data-tier="2">8m 🔒</button>
-    <button class="audio-btn" data-tier="3">Chase 🔒</button>
+  <div id="audioVolumeContainer">
+    <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" aria-label="Volume slider" />
+
+    <div id="audioButtons">
+      <button class="audio-btn" data-tier="0">32m ▶</button>
+      <button class="audio-btn" data-tier="1">16m 🔒</button>
+      <button class="audio-btn" data-tier="2">8m 🔒</button>
+      <button class="audio-btn" data-tier="3">Chase 🔒</button>
+    </div>
   </div>
 
   <audio id="audioPlayer" hidden></audio>
 
   <div style="position: relative; display: inline-block;">
-    <input type="text" id="guessInput" placeholder="Enter killer name" autocomplete="off">
+    <input type="text" id="guessInput" placeholder="Enter killer name" autocomplete="off" />
     <div id="suggestions" class="dropdown"></div>
   </div>
+
+  <p id="shared-note">
+    Note: Trapper, Wraith, Pig, Plague, Freddy, Bubba and Huntress share the same
+    default chase music. Your guess will autocorrect to "Default" for them.
+  </p>
 
   <button id="submitGuess">Submit Guess</button>
 
   <div id="guesses"></div>
   <div id="winMessage"></div>
+  <div id="loseMessage"></div>
   <button id="newRoundButton">Play New Round</button>
 
+  <button id="giveUpButton">Give Up</button>
+
   <script>
-    const killers = [
-            {
-        name: "Default",
-        files: {
-          "32m": "TerrorRadius_Default_000.ogg",
-          "16m": "TerrorRadius_Default_001.ogg",
-          "8m": "TerrorRadius_Default_002.ogg",
-          "chase": "TerrorRadius_Default_003.ogg"
-        }
-      },
-      {
-        name: "Hillbilly",
-        files: {
-          "32m": "TerrorRadius_Hillbilly_000.ogg",
-          "16m": "TerrorRadius_Hillbilly_001.ogg",
-          "8m": "TerrorRadius_Hillbilly_002.ogg",
-          "chase": "TerrorRadius_Hillbilly_003.ogg"
-        }
-      },
-      {
-        name: "Nurse",
-        files: {
-          "32m": "TerrorRadius_Nurse_000.ogg",
-          "16m": "TerrorRadius_Nurse_001.ogg",
-          "8m": "TerrorRadius_Nurse_002.ogg",
-          "chase": "TerrorRadius_Nurse_003.ogg"
-        }
-      },
-      {
-        name: "Shape",
-        files: {
-          "32m": "TerrorRadius_Shape_000.ogg",
-          "16m": "TerrorRadius_Shape_001.ogg",
-          "8m": "TerrorRadius_Shape_002.ogg",
-          "chase": "TerrorRadius_Shape_003.ogg"
-        }
-      },
-      {
-        name: "Hag",
-        files: {
-          "32m": "TerrorRadius_Hag_000.ogg",
-          "16m": "TerrorRadius_Hag_001.ogg",
-          "8m": "TerrorRadius_Hag_002.ogg",
-          "chase": "TerrorRadius_Hag_003.ogg"
-        }
-      },
-      {
-        name: "Doctor",
-        files: {
-          "32m": "TerrorRadius_Doctor_000.ogg",
-          "16m": "TerrorRadius_Doctor_001.ogg",
-          "8m": "TerrorRadius_Doctor_002.ogg",
-          "chase": "TerrorRadius_Doctor_003.ogg"
-        }
-      },
-      {
-        name: "Clown",
-        files: {
-          "32m": "TerrorRadius_Clown_000.ogg",
-          "16m": "TerrorRadius_Clown_001.ogg",
-          "8m": "TerrorRadius_Clown_002.ogg",
-          "chase": "TerrorRadius_Clown_003.ogg"
-        }
-      },
-      {
-        name: "Spirit",
-        files: {
-          "32m": "TerrorRadius_Spirit_000.ogg",
-          "16m": "TerrorRadius_Spirit_001.ogg",
-          "8m": "TerrorRadius_Spirit_002.ogg",
-          "chase": "TerrorRadius_Spirit_003.ogg"
-        }
-      },
-      {
-        name: "Legion",
-        files: {
-          "32m": "TerrorRadius_Legion_000.ogg",
-          "16m": "TerrorRadius_Legion_001.ogg",
-          "8m": "TerrorRadius_Legion_002.ogg",
-          "chase": "TerrorRadius_Legion_003.ogg"
-        }
-      },
-      {
-        name: "Ghost Face",
-        files: {
-          "32m": "TerrorRadius_Ghost_Face_000.ogg",
-          "16m": "TerrorRadius_Ghost_Face_001.ogg",
-          "8m": "TerrorRadius_Ghost_Face_002.ogg",
-          "chase": "TerrorRadius_Ghost_Face_003.ogg"
-        }
-      },
-      {
-        name: "Demogorgon",
-        files: {
-          "32m": "TerrorRadius_Demogorgon_000.ogg",
-          "16m": "TerrorRadius_Demogorgon_001.ogg",
-          "8m": "TerrorRadius_Demogorgon_002.ogg",
-          "chase": "TerrorRadius_Demogorgon_003.ogg"
-        }
-      },
-      {
-        name: "Oni",
-        files: {
-          "32m": "TerrorRadius_Oni_000.ogg",
-          "16m": "TerrorRadius_Oni_001.ogg",
-          "8m": "TerrorRadius_Oni_002.ogg",
-          "chase": "TerrorRadius_Oni_003.ogg"
-        }
-      },
-      {
-        name: "Deathslinger",
-        files: {
-          "32m": "TerrorRadius_Deathslinger_000.ogg",
-          "16m": "TerrorRadius_Deathslinger_001.ogg",
-          "8m": "TerrorRadius_Deathslinger_002.ogg",
-          "chase": "TerrorRadius_Deathslinger_003.ogg"
-        }
-      },
-      {
-        name: "Executioner",
-        files: {
-          "32m": "TerrorRadius_Executioner_000.ogg",
-          "16m": "TerrorRadius_Executioner_001.ogg",
-          "8m": "TerrorRadius_Executioner_002.ogg",
-          "chase": "TerrorRadius_Executioner_003.ogg"
-        }
-      },
-      {
-        name: "Blight",
-        files: {
-          "32m": "TerrorRadius_Blight_000.ogg",
-          "16m": "TerrorRadius_Blight_001.ogg",
-          "8m": "TerrorRadius_Blight_002.ogg",
-          "chase": "TerrorRadius_Blight_003.ogg"
-        }
-      },
-      {
-        name: "Twins",
-        files: {
-          "32m": "TerrorRadius_Twins_000.ogg",
-          "16m": "TerrorRadius_Twins_001.ogg",
-          "8m": "TerrorRadius_Twins_002.ogg",
-          "chase": "TerrorRadius_Twins_003.ogg"
-        }
-      },
-      {
-        name: "Trickster",
-        files: {
-          "32m": "TerrorRadius_Trickster_000.ogg",
-          "16m": "TerrorRadius_Trickster_001.ogg",
-          "8m": "TerrorRadius_Trickster_002.ogg",
-          "chase": "TerrorRadius_Trickster_003.ogg"
-        }
-      },
-      {
-        name: "Nemesis",
-        files: {
-          "32m": "TerrorRadius_Nemesis_000.ogg",
-          "16m": "TerrorRadius_Nemesis_001.ogg",
-          "8m": "TerrorRadius_Nemesis_002.ogg",
-          "chase": "TerrorRadius_Nemesis_003.ogg"
-        }
-      },
-      {
-        name: "Cenobite",
-        files: {
-          "32m": "TerrorRadius_Cenobite_000.ogg",
-          "16m": "TerrorRadius_Cenobite_001.ogg",
-          "8m": "TerrorRadius_Cenobite_002.ogg",
-          "chase": "TerrorRadius_Cenobite_003.ogg"
-        }
-      },
-      {
-        name: "Artist",
-        files: {
-          "32m": "TerrorRadius_Artist_000.ogg",
-          "16m": "TerrorRadius_Artist_001.ogg",
-          "8m": "TerrorRadius_Artist_002.ogg",
-          "chase": "TerrorRadius_Artist_003.ogg"
-        }
-      },
-      {
-        name: "Onryo",
-        files: {
-          "32m": "TerrorRadius_Onryo_000.ogg",
-          "16m": "TerrorRadius_Onryo_001.ogg",
-          "8m": "TerrorRadius_Onryo_002.ogg",
-          "chase": "TerrorRadius_Onryo_003.ogg"
-        }
-      },
-      {
-        name: "Dredge",
-        files: {
-          "32m": "TerrorRadius_Dredge_000.ogg",
-          "16m": "TerrorRadius_Dredge_001.ogg",
-          "8m": "TerrorRadius_Dredge_002.ogg",
-          "chase": "TerrorRadius_Dredge_003.ogg"
-        }
-      },
-      {
-        name: "Mastermind",
-        files: {
-          "32m": "TerrorRadius_Mastermind_000.ogg",
-          "16m": "TerrorRadius_Mastermind_001.ogg",
-          "8m": "TerrorRadius_Mastermind_002.ogg",
-          "chase": "TerrorRadius_Mastermind_003.ogg"
-        }
-      },
-      {
-        name: "Knight",
-        files: {
-          "32m": "TerrorRadius_Knight_000.ogg",
-          "16m": "TerrorRadius_Knight_001.ogg",
-          "8m": "TerrorRadius_Knight_002.ogg",
-          "chase": "TerrorRadius_Knight_003.ogg"
-        }
-      },
-      {
-        name: "Skull Merchant",
-        files: {
-          "32m": "TerrorRadius_Skull_Merchant_000.ogg",
-          "16m": "TerrorRadius_Skull_Merchant_001.ogg",
-          "8m": "TerrorRadius_Skull_Merchant_002.ogg",
-          "chase": "TerrorRadius_Skull_Merchant_003.ogg"
-        }
-      },
-      {
-        name: "Singularity",
-        files: {
-          "32m": "TerrorRadius_Singularity_000.ogg",
-          "16m": "TerrorRadius_Singularity_001.ogg",
-          "8m": "TerrorRadius_Singularity_002.ogg",
-          "chase": "TerrorRadius_Singularity_003.ogg"
-        }
-      },
-      {
-        name: "Xenomorph",
-        files: {
-          "32m": "TerrorRadius_Xenomorph_000.ogg",
-          "16m": "TerrorRadius_Xenomorph_001.ogg",
-          "8m": "TerrorRadius_Xenomorph_002.ogg",
-          "chase": "TerrorRadius_Xenomorph_003.ogg"
-        }
-      },
-      {
-        name: "Good Guy",
-        files: {
-          "32m": "TerrorRadius_Good_Guy_000.ogg",
-          "16m": "TerrorRadius_Good_Guy_001.ogg",
-          "8m": "TerrorRadius_Good_Guy_002.ogg",
-          "chase": "TerrorRadius_Good_Guy_003.ogg"
-        }
-      },
-      {
-        name: "Unknown",
-        files: {
-          "32m": "TerrorRadius_Unknown_000.ogg",
-          "16m": "TerrorRadius_Unknown_001.ogg",
-          "8m": "TerrorRadius_Unknown_002.ogg",
-          "chase": "TerrorRadius_Unknown_003.ogg"
-        }
-      },
-      {
-        name: "Lich",
-        files: {
-          "32m": "TerrorRadius_Lich_000.ogg",
-          "16m": "TerrorRadius_Lich_001.ogg",
-          "8m": "TerrorRadius_Lich_002.ogg",
-          "chase": "TerrorRadius_Lich_003.ogg"
-        }
-      },
-      {
-        name: "Dark Lord",
-        files: {
-          "32m": "TerrorRadius_Dark_Lord_000.ogg",
-          "16m": "TerrorRadius_Dark_Lord_001.ogg",
-          "8m": "TerrorRadius_Dark_Lord_002.ogg",
-          "chase": "TerrorRadius_Dark_Lord_003.ogg"
-        }
-      },
-	        {
-        name: "Houndmaster",
-        files: {
-          "32m": "TerrorRadius_Houndmaster_000.ogg",
-          "16m": "TerrorRadius_Houndmaster_001.ogg",
-          "8m": "TerrorRadius_Houndmaster_002.ogg",
-          "chase": "TerrorRadius_Houndmaster_003.ogg"
-        }
-      },
-      {
-        name: "Ghoul",
-        files: {
-          "32m": "TerrorRadius_Ghoul_000.ogg",
-          "16m": "TerrorRadius_Ghoul_001.ogg",
-          "8m": "TerrorRadius_Ghoul_002.ogg",
-          "chase": "TerrorRadius_Ghoul_003.ogg"
-        }
-      },
-      {
-        name: "Animatronic",
-        files: {
-          "32m": "TerrorRadius_Animatronic_000.ogg",
-          "16m": "TerrorRadius_Animatronic_001.ogg",
-          "8m": "TerrorRadius_Animatronic_002.ogg",
-          "chase": "TerrorRadius_Animatronic_003.ogg"
-        }
-      },
+    const aliases = {
+      "bubba": "Default",
+      "cannibal": "Default",
+      "myers": "Shape",
+      "pyramid head": "Executioner",
+      "pinhead": "Cenobite",
+      "wesker": "Mastermind",
+      "alien": "Xenomorph",
+      "chucky": "Good Guy",
+      "vecna": "Lich",
+      "dracula": "Dark Lord",
+      "kaneki": "Ghoul",
+      "springtrap": "Animatronic",
+      "trapper": "Default",
+      "wraith": "Default",
+      "pig": "Default",
+      "plague": "Default",
+      "freddy": "Default",
+      "huntress": "Default"
+    };
+
+    const killerNames = [
+      "Default", "Hillbilly", "Nurse", "Shape", "Hag", "Doctor", "Clown",
+      "Spirit", "Legion", "Ghost_Face", "Demogorgon", "Oni", "Deathslinger",
+      "Executioner", "Blight", "Twins", "Trickster", "Nemesis", "Cenobite",
+      "Artist", "Onryo", "Dredge", "Mastermind", "Knight", "Skull_Merchant",
+      "Singularity", "Xenomorph", "Good_Guy", "Unknown", "Lich", "Dark_Lord",
+      "Houndmaster", "Ghoul", "Animatronic"
     ];
 
     const tierLabels = ["32m", "16m", "8m", "chase"];
+
+    const killers = killerNames.map(name => ({
+      name: name.replace(/_/g, " "),
+      files: tierLabels.reduce((files, tier, index) => {
+        files[tier] = `TerrorRadius_${name}_${String(index).padStart(3, '0')}.ogg`;
+        return files;
+      }, {})
+    }));
+
+    console.log(killers);
+
     let currentKiller = null;
     let gameWon = false;
     let unlockedTier = 0;
@@ -443,6 +299,7 @@
 
     const guessesContainer = document.getElementById("guesses");
     const winMessage = document.getElementById("winMessage");
+    const loseMessage = document.getElementById("loseMessage");
     const newRoundButton = document.getElementById("newRoundButton");
     const guessInput = document.getElementById("guessInput");
     const suggestions = document.getElementById("suggestions");
@@ -463,9 +320,11 @@
       playingTier = null;
       previousGuesses.clear();
       winMessage.textContent = '';
+      loseMessage.textContent = '';
       guessesContainer.innerHTML = '';
       guessInput.value = '';
       newRoundButton.style.display = 'none';
+      document.getElementById("giveUpButton").style.display = 'inline-block';
       if (currentAudio) currentAudio.pause();
       resetAudioButtons();
     }
@@ -479,18 +338,29 @@
 
         if (playingTier === index) {
           currentAudio.pause();
-          currentAudio.currentTime = 0;
           button.textContent = `${label} ▶`;
           playingTier = null;
         } else {
-          if (currentAudio) {
+          if (playingTier !== null && currentAudio) {
+            buttons[playingTier].textContent = tierLabels[playingTier] + ' ▶';
             currentAudio.pause();
-            resetAudioButtons();
           }
-          currentAudio = new Audio(`sounds/${file}`);
-          currentAudio.play();
+
+          if (!currentAudio || playingTier === null) {
+            currentAudio = new Audio(`sounds/${file}`);
+            currentAudio.play();
+            playingTier = index;
+          } else if (playingTier !== index) {
+            currentAudio = new Audio(`sounds/${file}`);
+            currentAudio.play();
+            playingTier = index;
+          } else {
+            currentAudio.play();
+            playingTier = index;
+          }
+
+          resetAudioButtons();
           button.textContent = `${label} ⏸`;
-          playingTier = index;
 
           currentAudio.addEventListener("ended", () => {
             button.textContent = `${label} ▶`;
@@ -500,29 +370,41 @@
       });
     });
 
+    const volumeSlider = document.getElementById('volumeSlider');
+
+    volumeSlider.addEventListener('input', () => {
+      if (currentAudio) {
+        currentAudio.volume = volumeSlider.value;
+      }
+    });
+
     document.getElementById("submitGuess").addEventListener("click", () => {
       const userGuess = guessInput.value.trim();
       const guessLower = userGuess.toLowerCase();
+      const normalizedGuess = aliases[guessLower] || userGuess;
+      const normalizedLower = normalizedGuess.toLowerCase();
+
+      suggestions.style.display = 'none';
 
       if (!currentKiller || gameWon || !userGuess) return;
 
-      if (previousGuesses.has(guessLower)) {
+      if (previousGuesses.has(normalizedLower)) {
         alert("You've already guessed that!");
         return;
       }
 
       const validKillers = killers.map(k => k.name.toLowerCase());
-      if (!validKillers.includes(guessLower)) {
+      if (!validKillers.includes(normalizedLower)) {
         alert("Invalid killer name. Please choose from the list.");
         return;
       }
 
-      previousGuesses.add(guessLower);
+      previousGuesses.add(normalizedLower);
+
       const guessRow = document.createElement("div");
       guessRow.classList.add("guess-row");
-      guessRow.textContent = killers.find(k => k.name.toLowerCase() === guessLower)?.name || userGuess;
+      guessRow.textContent = killers.find(k => k.name.toLowerCase() === normalizedLower)?.name || userGuess;
 
-      // Stop any playing audio
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
@@ -530,11 +412,14 @@
       }
       resetAudioButtons();
 
-      if (guessLower === currentKiller.name.toLowerCase()) {
+      if (normalizedLower === currentKiller.name.toLowerCase()) {
         guessRow.classList.add("correct");
-        winMessage.textContent = "You win!";
+        winMessage.textContent = "You won!";
         gameWon = true;
+        unlockedTier = 3;
+        resetAudioButtons();
         newRoundButton.style.display = 'inline-block';
+        document.getElementById("giveUpButton").style.display = 'none';
       } else {
         guessRow.classList.add("wrong");
         if (unlockedTier < 3) unlockedTier++;
@@ -549,15 +434,44 @@
       startNewGame();
     });
 
+    document.getElementById("giveUpButton").addEventListener("click", () => {
+      if (!currentKiller || gameWon) return;
+
+      const giveUpRow = document.createElement("div");
+      giveUpRow.classList.add("guess-row", "correct");
+      giveUpRow.textContent = `${currentKiller.name}`;
+      guessesContainer.appendChild(giveUpRow);
+
+      loseMessage.textContent = "You lost!";
+      gameWon = true;
+      unlockedTier = 3;
+      resetAudioButtons();
+      newRoundButton.style.display = 'inline-block';
+      document.getElementById("giveUpButton").style.display = 'none';
+    });
+
     guessInput.addEventListener("input", () => {
-      const input = guessInput.value.toLowerCase();
-      const matches = killers.filter(k => k.name.toLowerCase().startsWith(input)).map(k => k.name);
+      highlightedIndex = -1;
+
+      const input = guessInput.value.toLowerCase().trim();
+
+      const aliasMatches = Object.keys(aliases)
+        .filter(alias => alias.startsWith(input))
+        .map(alias => aliases[alias]);
+
+      const nameMatches = killers
+        .map(k => k.name)
+        .filter(name => name.toLowerCase().startsWith(input));
+
+      const allMatches = [...new Set([...nameMatches, ...aliasMatches])];
+
       suggestions.innerHTML = '';
-      if (input === '' || matches.length === 0) {
+      if (input === '' || allMatches.length === 0) {
         suggestions.style.display = 'none';
         return;
       }
-      matches.forEach(match => {
+
+      allMatches.forEach(match => {
         const div = document.createElement("div");
         div.textContent = match;
         div.addEventListener("click", () => {
@@ -566,15 +480,54 @@
         });
         suggestions.appendChild(div);
       });
+
       suggestions.style.display = 'block';
     });
 
-    guessInput.addEventListener("blur", () => {
-      setTimeout(() => suggestions.style.display = 'none', 200);
+    let highlightedIndex = -1;
+
+    guessInput.addEventListener("keydown", (e) => {
+      const items = suggestions.querySelectorAll("div");
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (items.length === 0) return;
+
+        highlightedIndex = (highlightedIndex + 1) % items.length;
+        updateDropdownHighlight(items);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (items.length === 0) return;
+
+        highlightedIndex = (highlightedIndex - 1 + items.length) % items.length;
+        updateDropdownHighlight(items);
+      } else if (e.key === "Enter") {
+        if (highlightedIndex >= 0 && items.length > 0) {
+          e.preventDefault();
+          guessInput.value = items[highlightedIndex].textContent;
+          suggestions.style.display = 'none';
+          highlightedIndex = -1;
+        } else {
+          document.getElementById("submitGuess").click();
+        }
+      }
     });
 
-    // Start first round
+    function updateDropdownHighlight(items) {
+      items.forEach((item, i) => {
+        item.classList.toggle("highlighted", i === highlightedIndex);
+      });
+
+      if (highlightedIndex >= 0 && items.length > 0) {
+        items[highlightedIndex].scrollIntoView({
+          block: "nearest",
+          behavior: "smooth"
+        });
+      }
+    }
+
     startNewGame();
   </script>
 </body>
+
 </html>
